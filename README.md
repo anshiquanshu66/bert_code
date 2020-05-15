@@ -1,4 +1,5 @@
-![](bert/bert.jpg)
+
+![](README/bert.jpg)
 
 <!--more-->
 
@@ -25,8 +26,6 @@ BERT提出一种新的**预训练目标**——**遮蔽语言模型（masked lan
 
 [论文地址](https://arxiv.org/pdf/1810.04805.pdf)
 
-如果出现公式或者代码乱码问题，移步[github.io](https://jeffery0628.github.io/)
-
 # 模型架构
 
 BERT 旨在基于所有层的左、右语境来预训练深度双向表征。因此，预训练的 BERT 表征可以仅用一个额外的输出层进行微调，进而为很多任务创建当前最优模型，无需对任务特定架构做出大量修改。
@@ -43,7 +42,7 @@ BERT 旨在基于所有层的左、右语境来预训练深度双向表征。因
 
 $BERT_{Base}$和OpenAI GPT的大小是一样的。BERT Transformer使用**双向自注意力机制**，而GPT Transformer使用受限的自注意力机制，导致每个token只能关注其左侧的语境。双向Transformer在文献中通常称为**“Transformer 编码器”**，而只**关注左侧语境的版本**则因能用于文本生成而被称为**“Transformer 解码器”**。
 
-![](bert/bert-gpt-transformer-elmo.png)
+![](README/bert-gpt-transformer-elmo.png)
 
 - BERT 使用双向Transformer
 - OpenAI GPT 使用从左到右的Transformer
@@ -64,6 +63,7 @@ BERT训练双向语言模型时以较小的概率把少量的词替成了Mask或
 - 缺点1：预训练和finetuning之间不匹配，因为在finetuning期间从未看到`[MASK]`token。
 
   为了解决这个问题，并不总是用实际的`[MASK]`token替换被“masked”的词汇。使用训练数据生成器**随机选择15％的token**。例如在这个句子“my dog is hairy”中，它选择的token是“hairy”。然后，执行以下过程：
+
   - 80％的时间：**用`[MASK]`标记替换单词**，例如，`my dog is hairy → my dog is [MASK]`
   - 10％的时间：用一个**随机的单词**替换该单词，例如，`my dog is hairy → my dog is apple`
   - 10％的时间：**保持单词不变**，例如，`my dog is hairy → my dog is hairy`. 这样做的目的是将表示偏向于实际观察到的单词。
@@ -123,7 +123,9 @@ vocab.txt是模型的词典，这个文件会经常要用到。*bert_config.json
   "vocab_size": 21128 #词典中词数
 }
 ```
+
 vocab.txt中的部分内容
+
 ```txt vocab.txt
 馬
 高
@@ -152,7 +154,7 @@ to
 
 ### step 1: read example from file
 
-```python read_examples_from_file
+```python read_examples_from_file
 @dataclass
 class InputExample:
     """
@@ -213,7 +215,7 @@ def read_examples_from_file(data_dir, mode: Union[Split, str]) -> List[InputExam
 1. 对于文本序列中不想被切分开的词可以放到一个列表中，通过never_split传入分词函数中，就不会对列表中的文字进行分词。
 2. 中文序列标注任务需要注意：`'\t', '\n', '\r'，' '`会被替换成空白字符`' '`添加到文本中，英文文本对文本进行分词的时候又会根据空白字符来进行分词，导致空白字符会被直接清洗掉，这样就会导致中文序列标注的标签中的`'\t', '\n', '\r'，' '`在分词之后找不到对应的位置。
 
-```python BasicTokenizer
+```python BasicTokenizer
 class BasicTokenizer(object):
     """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
     def __init__(self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True):
@@ -334,6 +336,7 @@ class BasicTokenizer(object):
                 output.append(char)
         return "".join(output)
 ```
+
 #### WordpieceTokenizer
 
 经过`BasicTokenizer`处理成空格隔开的单词之后，还需要在经过WordpieceTokenizer对英文单词进行更细粒度的切分：
@@ -588,7 +591,7 @@ def convert_examples_to_features(
     tokenizer: PreTrainedTokenizer, # 分词器
     cls_token_at_end=False, # [CLS]字符是否添加在序列最后，默认是放在序列最前面，False：[CLS] + A + [SEP] + B + [SEP]，True: A + [SEP] + B + [SEP] + [CLS]
     cls_token="[CLS]",
-    cls_token_segment_id=1, # ？？ `cls_token_segment_id` define the segment id associated to the CLS token (0 for BERT, 2 for XLNet)
+    cls_token_segment_id=1, # `cls_token_segment_id` define the segment id associated to the CLS token (0 for BERT, 2 for XLNet)
     sep_token="[SEP]",
     sep_token_extra=False, # roberta 中会有extra sep token
     pad_on_left=False, # 是否在序列的左边进行pad
@@ -752,7 +755,7 @@ class NerDataset(Dataset):
 
 ## BertModel
 
-![](bert/BertModel.png)
+![](README/BertModel.png)
 
 从整体来看BertModel由三部分组成：BertEmbeddings、BertEncoder、BertPooler,需要注意`attention_mask和head_mask`的处理。
 
@@ -796,8 +799,8 @@ class BertModel(BertPreTrainedModel):
         """
         参数：
         head_mask: head_mask has shape [num_heads] or [num_hidden_layers x num_heads]
-        encoder_hidden_states:??
-        encoder_attention_mask:??
+        encoder_hidden_states: encoder 的输出
+        encoder_attention_mask:
         返回值：
         last_hidden_state :[batch_size, sequence_length, hidden_size]，是序列在模型最后一层的输出的隐藏层
         pooler_output :[batch_size, hidden_size]:[CLS]对应的隐状态的输出，由于这个token是用来做NSP任务的，这个输出通常不能很好的summary 整个序列的语义，如果想要获取整句话的语义通常需要对整个序列取平均或者池化。
@@ -863,7 +866,7 @@ class BertModel(BertPreTrainedModel):
 
 从Bert的论文中可以知道，Bert的词向量主要是由三个向量相加组合而成，分别是单词本身的向量，单词所在句子中位置的向量和句子所在单个训练文本中位置的向量。这样做的好处主要可以解决只有词向量时碰见多义词时模型预测不准的问题。
 
-![](bert/bert-input-representation.png)
+![](README/bert-input-representation.png)
 
 forward：(符号'是可以为None的意思)
 
@@ -1073,7 +1076,7 @@ forward：(符号'是可以为None的意思)
 - 过程:`self-attention 过程`
 
 
-![](bert/image-20200515100926049.png)
+![](README/image-20200515100926049.png)
 
 ```python
 class BertSelfAttention(nn.Module):
@@ -1132,7 +1135,7 @@ class BertSelfAttention(nn.Module):
         attention_probs = nn.Softmax(dim=-1)(attention_scores)
 
         # This is actually dropping out entire tokens to attend to, which might
-        # seem a bit unusual, but is taken from the original Transformer paper  ？？.
+        # seem a bit unusual, but is taken from the original Transformer paper .
         attention_probs = self.dropout(attention_probs)
 
         # 
@@ -1149,6 +1152,7 @@ class BertSelfAttention(nn.Module):
         outputs = (context_layer, attention_probs) if self.output_attentions else (context_layer,)
         return outputs
 ```
+
 ###### BertSelfOutput
 
 forward：(符号'是可以为None的意思)
@@ -1252,7 +1256,7 @@ class BertPooler(nn.Module):
         return pooled_output
 ```
 
-### 总结
+## 总结
 
 数据流：
 
@@ -1314,16 +1318,10 @@ class BertPooler(nn.Module):
 14. BertForQuestionAnswering
     计算问答任务的loss
 
-
-
-
-
-
-
 ###  使用预训练模型
 
 在BertModel class中有两个函数。get_pool_output表示获取每个batch第一个词的[CLS]表示结果。BERT认为这个词包含了整条语料的信息；适用于句子级别的分类问题。get_sequence_output表示BERT最终的输出结果,shape为[batch_size,seq_length,hidden_size]。可以直观理解为对每条语料的最终表示，适用于seq2seq问题。
-对于其它序列标注或生成任务，我们也可以使用 BERT 对应的输出信息作出预测，例如每一个时间步输出一个标注或词等。下图展示了 BERT 在 11 种任务中的微调方法，它们都只添加了一个额外的输出层。在下图中，Tok 表示不同的词、E 表示输入的嵌入向量、$T_i$表示第 i 个词在经过 BERT 处理后输出的上下文向量。
+对于其它序列标注或生成任务，也可以使用 BERT 对应的输出信息作出预测，例如每一个时间步输出一个标注或词等。下图展示了 BERT 在 11 种任务中的微调方法，它们都只添加了一个额外的输出层。在下图中，Tok 表示不同的词、E 表示输入的嵌入向量、$T_i$表示第$i$ 个词在经过 BERT 处理后输出的上下文向量。
 
 
 
@@ -1333,13 +1331,12 @@ class BertPooler(nn.Module):
 
 
 
-![](bert/bert-specific-models.png)
+![](README/bert-specific-models.png)
 
 # 参考
 
-1. https://blog.csdn.net/qqywm/article/details/85454531
-2. https://blog.csdn.net/cpluss/article/details/88418176
-3. http://fancyerii.github.io/2019/03/09/bert-codes/
-4. [重要](https://zhuanlan.zhihu.com/p/56103665)
-5. [https://daiwk.github.io/posts/nlp-bert.html#pytorch%E7%89%88%E6%9C%AC](https://daiwk.github.io/posts/nlp-bert.html#pytorch版本)
-6. https://zhuanlan.zhihu.com/p/75558363
+3. [BERT代码阅读](http://fancyerii.github.io/2019/03/09/bert-codes/)
+4. [一起读Bert文本分类代码 ](https://zhuanlan.zhihu.com/p/56103665)
+5. [bert](https://daiwk.github.io/posts/nlp-bert.html#pytorch版本)
+6. [快速掌握BERT源代码（pytorch）](https://zhuanlan.zhihu.com/p/75558363)
+
